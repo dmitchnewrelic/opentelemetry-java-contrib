@@ -27,11 +27,29 @@ otel.metrics.exporter = otlp
 otel.exporter.otlp.endpoint = http://my-opentelemetry-collector:4317
 ```
 
-As configured in this example, the metric gatherer will establish an MBean server connection using the
+If SSL is not enabled on the RMI registry for your server, the metric gatherer will establish an MBean server connection using the
 specified `otel.jmx.service.url` (required) and credentials and configure an OTLP gRPC metrics exporter reporting to
 `otel.exporter.otlp.endpoint`. After loading the included JVM and Kafka metric-gathering scripts determined by
 the comma-separated list in `otel.jmx.target.system`, it will then run the scripts on the desired interval
 length of `otel.jmx.interval.milliseconds` and export the resulting metrics.
+
+
+```properties
+otel.jmxremote.registry.ssl=true
+otel.jmx.hostname=<my-jmx-host>
+otel.jmx.port=<my-jmx-port>
+otel.jmx.target.system = jvm,kafka
+otel.jmx.interval.milliseconds = 5000
+otel.jmx.username = my-username
+otel.jmx.password = my-password
+
+otel.metrics.exporter = otlp
+otel.exporter.otlp.endpoint = http://my-opentelemetry-collector:4317
+```
+
+If SSL is enabled on the RMI registry for your server, the `otel.jmx.service.url` property must be set to true,
+and the `otel.jmx.hostname` (required) and `otel.jmx.port` (required) are used rather than `otel.jmx.service.url` to establish
+the MBean server connection.
 
 For custom metrics and unsupported targets, you can provide your own MBean querying scripts to produce
 OpenTelemetry instruments:

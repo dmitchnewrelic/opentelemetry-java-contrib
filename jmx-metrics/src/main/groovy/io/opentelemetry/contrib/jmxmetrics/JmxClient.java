@@ -20,25 +20,30 @@ import javax.annotation.Nullable;
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 
 public class JmxClient {
   private static final Logger logger = Logger.getLogger(JmxClient.class.getName());
 
-  private final JMXServiceURL url;
+  private final String url;
   private final String username;
   private final String password;
   private final String realm;
   private final String remoteProfile;
+  private final boolean registrySsl;
+  private final String hostName;
+  private final int port;
   @Nullable private JMXConnector jmxConn;
 
   JmxClient(final JmxConfig config) throws MalformedURLException {
-    this.url = new JMXServiceURL(config.serviceUrl);
+    this.url = config.serviceUrl;
+    this.hostName = config.hostName;
+    this.port = config.port;
     this.username = config.username;
     this.password = config.password;
     this.realm = config.realm;
     this.remoteProfile = config.remoteProfile;
+    this.registrySsl = config.registrySsl;
+    JmxConnectorHelper.validateConfig(config);
   }
 
   public MBeanServerConnection getConnection() {
@@ -68,7 +73,7 @@ public class JmxClient {
         logger.warning("SASL unsupported in current environment: " + e.getMessage());
       }
 
-      jmxConn = JMXConnectorFactory.connect(url, env);
+      jmxConn = JmxConnectorHelper.connect(url, hostName, port, env, registrySsl);
       return jmxConn.getMBeanServerConnection();
     } catch (IOException e) {
       logger.log(Level.WARNING, "Could not connect to remote JMX server: ", e);
