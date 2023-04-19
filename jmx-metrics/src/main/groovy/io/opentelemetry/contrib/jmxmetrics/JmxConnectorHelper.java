@@ -6,7 +6,6 @@
 package io.opentelemetry.contrib.jmxmetrics;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -30,26 +29,24 @@ public class JmxConnectorHelper {
 
   private JmxConnectorHelper() {}
 
-  public static boolean validateConfig(final JmxConfig config) throws MalformedURLException {
-
-    if (!config.registrySsl) {
-      // ensure the service URL is valid, as it will be used to connect to the
-      // MBean server when SSL is not enabled on the RMI registry.
-      JMXServiceURL jmxServiceURL = new JMXServiceURL(config.serviceUrl);
-    }
-    return true;
-  }
-
+  /**
+   * To use SSL, the {@link RMIServer} stub used by the {@link RMIConnector} must be built
+   * separately. As a result, we have to unwind the {@link JMXConnectorFactory#connect} method and
+   * reimplement pieces.
+   */
   public static JMXConnector connect(
-      String serviceURL, String hostName, int port, Map<String, Object> env, boolean registrySsl)
-      throws IOException {
+      JMXServiceURL serviceURL, Map<String, Object> env, boolean registrySsl) throws IOException {
 
     // Different connection logic is needed when SSL is enabled on the RMI registry
     if (registrySsl) {
       logger.log(Level.INFO, "Attempting to connect to an SSL-protected RMI registry");
 
-      env.put("jmx.remote.x.check.stub", "true");
-      // Check for SSL config on reconnection only
+      // Create a temp JMXServiceURL, so we can parse the hostname and port
+      JMXServiceURL tempServiceURL =
+          new JMXServiceURL(serviceURL.toString().replaceAll("///jndi/rmi:", ""));
+      String hostName = tempServiceURL.getHost();
+      int port = tempServiceURL.getPort();
+
       if (stub == null) {
         getStub(hostName, port);
       }
@@ -57,19 +54,16 @@ public class JmxConnectorHelper {
       jmxConn.connect(env);
       return jmxConn;
     } else {
-      JMXServiceURL jmxServiceURL = new JMXServiceURL(serviceURL);
-      return JMXConnectorFactory.connect(jmxServiceURL, env);
+      return JMXConnectorFactory.connect(serviceURL, env);
     }
   }
 
   private static void getStub(String hostName, int port) throws IOException {
-    // Get the reference to the RMI Registry and lookup RMIServer stub
-    Registry registry;
     try {
-      registry = LocateRegistry.getRegistry(hostName, port, sslRMIClientSocketFactory);
+      Registry registry = LocateRegistry.getRegistry(hostName, port, sslRMIClientSocketFactory);
       stub = (RMIServer) registry.lookup("jmxrmi");
     } catch (NotBoundException nbe) {
-      throw new IOException(nbe.getMessage());
+      throw new IOException(nbe);
     }
   }
 }

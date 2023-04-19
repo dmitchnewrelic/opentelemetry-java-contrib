@@ -19,9 +19,7 @@ class JmxConfig {
   static final String INTERVAL_MILLISECONDS = PREFIX + "jmx.interval.milliseconds";
   static final String METRICS_EXPORTER_TYPE = PREFIX + "metrics.exporter";
   static final String EXPORTER = PREFIX + "exporter.";
-  static final String REGISTRY_SSL = PREFIX + "jmxremote.registry.ssl";
-  static final String JMX_HOSTNAME = PREFIX + "jmx.hostname";
-  static final String JMX_PORT = PREFIX + "jmx.port";
+  static final String REGISTRY_SSL = PREFIX + "jmx.remote.registry.ssl";
   static final String EXPORTER_INTERVAL = PREFIX + "metric.export.interval";
 
   static final String OTLP_ENDPOINT = EXPORTER + "otlp.endpoint";
@@ -77,8 +75,6 @@ class JmxConfig {
   final String realm;
   final String remoteProfile;
   final boolean registrySsl;
-  final String hostName;
-  final int port;
   final Properties properties;
 
   JmxConfig(final Properties props) {
@@ -116,8 +112,6 @@ class JmxConfig {
     realm = properties.getProperty(JMX_REALM);
 
     registrySsl = Boolean.valueOf(properties.getProperty(REGISTRY_SSL));
-    hostName = properties.getProperty(JMX_HOSTNAME);
-    port = getAndSetProperty(JMX_PORT, 0);
 
     // For the list of System Properties, if they have been set in the properties file
     // they need to be set in Java System Properties.
@@ -172,19 +166,8 @@ class JmxConfig {
 
   /** Will determine if parsed config is complete, setting any applicable values and defaults. */
   void validate() {
-    if (isBlank(serviceUrl) && !registrySsl) {
-      throw new ConfigurationException(
-          SERVICE_URL + " must be specified unless " + REGISTRY_SSL + " is set to true.");
-    }
-
-    if (isBlank(hostName) && registrySsl) {
-      throw new ConfigurationException(
-          JMX_HOSTNAME + " must be specified unless " + REGISTRY_SSL + " is set to false.");
-    }
-
-    if (port == 0 && registrySsl) {
-      throw new ConfigurationException(
-          JMX_PORT + " must be specified unless " + REGISTRY_SSL + " is set to false.");
+    if (isBlank(serviceUrl)) {
+      throw new ConfigurationException(SERVICE_URL + " must be specified.");
     }
 
     if (isBlank(groovyScript) && isBlank(targetSystem)) {
